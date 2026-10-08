@@ -1,0 +1,96 @@
+import streamlit as st
+import numpy as np
+import matplotlib.pyplot as plt
+
+# -----------------------------------------------------------------------------
+# 1. Configuración de la página
+# -----------------------------------------------------------------------------
+st.set_page_config(
+    page_title="Simulador de Lluvia y Captación",
+    page_icon="🌧️",
+    layout="wide"
+)
+
+st.title("🌧️ Simulador de Captación de Agua de Lluvia")
+st.write("Ajusta los parámetros en la barra lateral para calcular la cantidad de agua captada en tiempo real.")
+
+# -----------------------------------------------------------------------------
+# 2. Controles de usuario (Barra Lateral)
+# -----------------------------------------------------------------------------
+st.sidebar.header("⚙️ Parámetros de Entrada")
+
+precipitacion_mm = st.sidebar.slider(
+    "Precipitación registrada (mm):",
+    min_value=1,
+    max_value=200,
+    value=25,
+    step=1
+)
+
+area_m2 = st.sidebar.number_input(
+    "Área de captación / techo (m²):",
+    min_value=1.0,
+    max_value=10000.0,
+    value=150.0,
+    step=10.0
+)
+
+eficiencia = st.sidebar.slider(
+    "Eficiencia de captación (%):",
+    min_value=50,
+    max_value=100,
+    value=90,
+    help="Porcentaje de agua aprovechada tras pérdidas por evaporación o filtración inicial."
+) / 100.0
+
+# -----------------------------------------------------------------------------
+# 3. Lógica matemática y cálculos
+# -----------------------------------------------------------------------------
+# 1 mm de lluvia = 1 litro por m²
+litros_brutos = precipitacion_mm * area_m2
+litros_netos = litros_brutos * eficiencia
+altura_cm = precipitacion_mm / 10.0
+
+# Equivalencia en tinacos estándar de 1,100 L
+tinacos_equivalentes = litros_netos / 1100.0
+
+# -----------------------------------------------------------------------------
+# 4. Despliegue de Resultados y Métricas
+# -----------------------------------------------------------------------------
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    st.metric("Lámina de agua", f"{altura_cm:.1f} cm")
+
+with col2:
+    st.metric("Volumen Bruto", f"{litros_brutos:,.0f} L")
+
+with col3:
+    st.metric("Volumen Aprovechable", f"{litros_netos:,.0f} L")
+
+with col4:
+    st.metric("Tinacos (1,100 L)", f"{tinacos_equivalentes:.1f}")
+
+st.markdown("---")
+
+# -----------------------------------------------------------------------------
+# 5. Gráfico dinámico con Matplotlib
+# -----------------------------------------------------------------------------
+st.subheader("📊 Relación de Agua Captada según el Área")
+
+# Generar datos para la curva
+areas_rango = np.linspace(10, max(area_m2 * 2, 100), 50)
+volumenes_rango = areas_rango * precipitacion_mm * eficiencia
+
+fig, ax = plt.subplots(figsize=(8, 3.5))
+ax.plot(areas_rango, volumenes_rango, color="#1f77b4", linewidth=2.5, label="Volumen aprovechable")
+ax.axvline(x=area_m2, color="red", linestyle="--", label=f"Tu área ({area_m2:.0f} m²)")
+ax.scatter([area_m2], [litros_netos], color="red", s=80, zorder=5)
+
+ax.set_title(f"Volumen captado con lluvia de {precipitacion_mm} mm", fontsize=11)
+ax.set_xlabel("Área de terreno/techo (m²)", fontsize=9)
+ax.set_ylabel("Litros netos (L)", fontsize=9)
+ax.grid(True, linestyle=":", alpha=0.6)
+ax.legend()
+
+st.pyplot(fig)
